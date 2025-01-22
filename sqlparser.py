@@ -1,7 +1,7 @@
 import sqlparse
 import pandas as pd
 
-def extract_sql_info(sql_query):
+def extract_sql_info_fixed(sql_query):
     parsed = sqlparse.parse(sql_query)
     all_columns = []
     
@@ -14,7 +14,8 @@ def extract_sql_info(sql_query):
 
         for col, table_alias in columns:
             table_name = aliases.get(table_alias, table_alias)  # Resolve table name
-            all_columns.append((table_name, table_alias, col))
+            if table_name:  # Avoid empty rows
+                all_columns.append((table_name, table_alias, col))
 
     return all_columns
 
@@ -49,13 +50,16 @@ def extract_columns(statement, table_aliases):
         if isinstance(token, sqlparse.sql.IdentifierList):
             for identifier in token.get_identifiers():
                 column, alias = extract_column_alias(identifier, table_aliases)
-                columns.append((column, alias))
+                if column:
+                    columns.append((column, alias))
         elif isinstance(token, sqlparse.sql.Identifier):
             column, alias = extract_column_alias(token, table_aliases)
-            columns.append((column, alias))
+            if column:
+                columns.append((column, alias))
         elif isinstance(token, sqlparse.sql.Function):
             column, alias = extract_function_alias(token, table_aliases)
-            columns.append((column, alias))
+            if column:
+                columns.append((column, alias))
 
     return columns
 
@@ -66,14 +70,13 @@ def extract_table_alias(identifier):
         return parts[0], None  # No alias
     elif len(parts) > 1:
         return parts[0], parts[-1]  # Table name and alias
-
     return None, None
 
 def extract_column_alias(identifier, table_aliases):
     """ Extracts column name and its associated table alias if present """
     value = identifier.value
 
-    # Handle cases like "portfolio_id AS f.port_number"
+    # Handle cases like "SUM(amount) AS total_amount"
     if " AS " in value.upper():
         value = value.split(" AS ")[0]
 
@@ -114,6 +117,12 @@ JOIN transactions t2 ON f2.portfolio_id = t2.portfolio_id
 LEFT JOIN products p2 ON t2.product_id = p2.product_id
 """
 
-# Extract information and save to Excel
-parsed_data = extract_sql_info(sql_query)
-save_to_excel(parsed_data)
+# Extract information using the fixed version
+parsed_data_fixed = extract_sql_info_fixed(sql_query)
+
+# Save the new fixed version to an Excel file
+fixed_file_path = "sql_parsed_fixed.xlsx"
+df_fixed = pd.DataFrame(parsed_data_fixed, columns=["Table Name", "Alias", "Column Name"])
+df_fixed.to_excel(fixed_file_path, index=False)
+
+print(f"Fixed data saved to {fixed_file_path}")
