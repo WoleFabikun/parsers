@@ -35,7 +35,7 @@ def extract_table_aliases(sql_query):
     return tables
 
 def extract_columns(sql_query, table_aliases):
-    """Extract column names and their associated table aliases."""
+    """Extract column names and their associated table aliases. Non-greedy approach so it matches to the first FROM."""
     select_pattern = re.compile(r'\bSELECT\s+(.*?)\bFROM\b', re.IGNORECASE | re.DOTALL)
     column_list = []
 
